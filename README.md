@@ -20,4 +20,4 @@ I've set ``server.js`` listening to port 5002 and that <b>should not be changed<
 
 By importing the database into your phpmyadmin, pasting the php files on htdocs (with the analogous edits) and by simply entering ``node server.js`` on your cmd, then the server will be running.
 
-<i>The above server files are exclusively for v0.2</i>
+<i>The above server files are exclusively for v0.2.</i>
