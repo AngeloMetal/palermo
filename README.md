@@ -1,5 +1,5 @@
 # palermo
-Source code of Palermo client (Node JS, PHP scripts, MySQL)
+Source code of Palermo server (Node JS, PHP scripts, MySQL)
 
 Requirements for running a palermo server:
 1) Node JS v12.19.0 (I haven't tested prior 12 but it should work on v10.xx.x too)
