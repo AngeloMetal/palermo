@@ -21,3 +21,6 @@ I've set ``server.js`` listening to port 5002 and that <b>should not be changed<
 By importing the database into your phpmyadmin, pasting the php files on htdocs (with the analogous edits) and by simply entering ``node server.js`` on your cmd, then the server will be running.
 
 <i>The above server files are exclusively for v0.2.</i>
+
+<h2>Why is this open-source?</h2>
+The idea is to make it available anytime by anyone, without the need of a server that can shut down any moment. This is right now developed by Angelo M. but anyone is welcomed to contribute. It's released under the MIT License.
