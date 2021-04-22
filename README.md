@@ -19,3 +19,5 @@ You can install them with ``npm install <library_name>`` on your command prompt.
 I've set ``server.js`` listening to port 5002 and that <b>should not be changed</b>. The unity game's files aren't open source (not at the moment), and they listen to port 5002 too, so it won't establish the connection properly. 
 
 By importing the database into your phpmyadmin, pasting the php files on htdocs (with the analogous edits) and by simply entering ``node server.js`` on your cmd, then the server will be running.
+
+<i>The above server files are exclusively for v0.2</i>
