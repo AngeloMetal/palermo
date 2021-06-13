@@ -11,7 +11,7 @@ const wss = new WebSocket.Server({ server });
 
 // By changing this to true, the game will be exclusively for testing purposes. 
 // On testnet:  1st is secret_m, 2nd is the spy and the last one is apparent_m
-var testnet = true;
+var testnet = false;
 
 var con = mysql.createConnection({
     host: "localhost",
@@ -67,7 +67,8 @@ wss.on('connection', function(ws) {
 			
 			// if username is not null
 			var pass = data.split(",")[1].split(":")[1].substring(0,5)
-	
+			var withKamikaze = data.split(",")[2].split(":")[1].substring(0,1)
+			
 			con.query("SELECT * FROM rooms WHERE pass = '"+pass+"'", function(err, result, fields) {
 				if (err) throw err;
 				console.log("players: " + result[0].players)
@@ -80,12 +81,12 @@ wss.on('connection', function(ws) {
 				
 				// Main Game
 				if(testnet == false){
-					for (var i = 0; i < 3; i++) {
+					for (var i = 0; i < 4; i++) {
 					  var idx = Math.floor(Math.random() * items.length);
 					  newItems.push(items[idx]);
 					  items.splice(idx, 1);
 					}
-					for(var i = 0; i<3; i++){
+					for(var i = 0; i<4; i++){
 						newItemsString += newItems[i] + ",";
 					}
 				}
@@ -95,12 +96,13 @@ wss.on('connection', function(ws) {
 					newItemsString += items[0] + ",";
 					newItemsString += items[items.length-1] + ",";
 					newItemsString += items[1] + ",";
+					newItemsString += items[2] + ",";
 				}
 			
 				newItemsString = newItemsString.slice(0, -1);
 				
 				con.query("UPDATE rooms SET roles = '"+newItemsString+"' WHERE pass = '" + pass + "'")
-					wss.broadcast("startRoom:" + pass);
+					wss.broadcast("startRoom:" + pass + ",withKamikaze:" + withKamikaze);
 			})
 		}
 		
@@ -110,11 +112,17 @@ wss.on('connection', function(ws) {
 			con.query("SELECT * FROM rooms WHERE pass = '"+pass+"'", function(err, result, fields) {
 				if (err) throw err;
 				var position = 0;
-				for(var i=1; i<4; i++){
-					if(result[0].roles.split(",")[i-1] == username){
+				for(var i=1; i<5; i++){
+					if(result[0].kamikaze == 1 && i == 4){
+						if(result[0].roles.split(",")[i-1] == username){
+							position = i
+						}
+					}else if(result[0].roles.split(",")[i-1] == username){
 						position = i
 					}
+					
 				}
+				
 				ws.send("allPlayers:" + result[0].players + "|pass:" + pass)
 				ws.send("position:" + position + ",pass:" + pass)
 				//στέλνει όλα τα players για PlayerPrefs:
@@ -185,6 +193,15 @@ wss.on('connection', function(ws) {
 		if(data.includes("action:agreement")){
 			var pass = data.split(",")[1].split(":")[1].substring(0,5)
 			var deadPlayer = data.split(",")[2].split(":")[1]
+			con.query("SELECT * FROM rooms WHERE pass = '"+pass+"'", function(err, result, fields) {
+				if (err) throw err;
+				//console.log("Suspicious players: " + result[0].suspects)
+				if(result[0].roles.split(',')[3] == deadPlayer){
+					con.query("UPDATE rooms SET kamikaze=2 WHERE pass = '"+pass+"'")
+				}
+				
+			})
+			
 			wss.broadcast("deadPlayer:" + deadPlayer + ",pass:" + pass)
 		}
 		
@@ -217,21 +234,37 @@ wss.on('connection', function(ws) {
 						}
 				}
 			
-				
 				console.log("total murderers: " + murderersLeft)
 				console.log("total players (without the murderers): " + (arrPlayers.length-2))
 				console.log("total suspects: " + (arrSuspects.length-1))
-				//Εάν δολοφόνοι = 2 και οι άλλοι <= 2 τότε νικούν οι δολοφόνοι
-				if(murderersLeft == 2 && ((arrPlayers.length-2) - (arrSuspects.length-1)) <= 2){
-					console.log("gameover,murderersLeft:2,playersLeft:<=2")
-					wss.broadcast("winners:murderers,pass:"+pass+",murderers:"+arrRoles[0]+"."+arrRoles[1]+",spy:"+arrRoles[2])
-				}else if(murderersLeft == 1 && ((arrPlayers.length-2) - (arrSuspects.length-1)) <= 1){
-					console.log("gameover,murderersLeft:1,playersLeft:1")
-					wss.broadcast("winners:murderers,pass:"+pass+",murderers:"+arrRoles[0]+"."+arrRoles[1]+",spy:"+arrRoles[2])
-				}else if(murderersLeft == 0){
-					console.log("NIKH")
-					wss.broadcast("winners:polites,pass:"+pass+",murderers:"+arrRoles[0]+"."+arrRoles[1]+",spy:"+arrRoles[2])
+				
+				var kamikaze_winner = false;
+				
+				//τσεκάρει για καμικάζι
+				if(result[0].kamikaze == 1){
+					for(var j=0; j<arrSuspects.length; j++){
+								if(arrRoles[3] == arrSuspects[j]){
+									wss.broadcast("winners:kamikaze,pass:"+pass+",murderers:"+arrRoles[0]+"."+arrRoles[1]+",spy:"+arrRoles[2]+",kamikaze:"+arrRoles[3])
+									kamikaze_winner = true;
+								}
+					}
 				}
+				
+				if(kamikaze_winner == false){
+					//Εάν δολοφόνοι = 2 και οι άλλοι <= 2 τότε νικούν οι δολοφόνοι
+					if(murderersLeft == 2 && ((arrPlayers.length-2) - (arrSuspects.length-1)) <= 2){
+						console.log("gameover,murderersLeft:2,playersLeft:<=2")
+						wss.broadcast("winners:murderers,pass:"+pass+",murderers:"+arrRoles[0]+"."+arrRoles[1]+",spy:"+arrRoles[2]+",kamikaze:"+arrRoles[3])
+					}else if(murderersLeft == 1 && ((arrPlayers.length-2) - (arrSuspects.length-1)) <= 1){
+						console.log("gameover,murderersLeft:1,playersLeft:1")
+						wss.broadcast("winners:murderers,pass:"+pass+",murderers:"+arrRoles[0]+"."+arrRoles[1]+",spy:"+arrRoles[2]+",kamikaze:"+arrRoles[3])
+					}else if(murderersLeft == 0){
+						wss.broadcast("winners:polites,pass:"+pass+",murderers:"+arrRoles[0]+"."+arrRoles[1]+",spy:"+arrRoles[2]+",kamikaze:"+arrRoles[3])
+					}
+				}
+				
+				
+				
 			})
 		}
   });
